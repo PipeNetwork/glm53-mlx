@@ -53,3 +53,39 @@ def run_layer(layer: nn.Module, h: mx.array) -> mx.array:
     x = h.astype(mx.bfloat16)
     mask = create_attention_mask(x, None, return_array=True)
     return layer(x, mask, None)[0].astype(mx.float32)
+
+
+PER_EXPERT_SUFFIXES = (
+    "mlp.switch_mlp.gate_proj.weight", "mlp.switch_mlp.up_proj.weight", "mlp.switch_mlp.down_proj.weight",
+    "mlp.switch_mlp.gate_proj.scales", "mlp.switch_mlp.up_proj.scales", "mlp.switch_mlp.down_proj.scales",
+    "mlp.switch_mlp.gate_proj.biases", "mlp.switch_mlp.up_proj.biases", "mlp.switch_mlp.down_proj.biases",
+    "mlp.gate.weight", "mlp.gate.e_score_correction_bias",
+)
+
+
+def moe_collect(mlp, normed: mx.array, token_chunk: int = 8192):
+    """The MoE block over a sequence, accumulating REAP saliency `router_weight * ||expert_output||`.
+
+    Returns (output, saliency[E], counts[E]). Chunked over tokens because the routed activations are
+    tokens x top_k x hidden.
+    """
+    B, L, H = normed.shape
+    flat = normed.reshape(-1, H)
+    E = mlp.gate.weight.shape[0]
+    sal = mx.zeros((E,), dtype=mx.float32)
+    cnt = mx.zeros((E,), dtype=mx.float32)
+    pieces = []
+    for start in range(0, flat.shape[0], token_chunk):
+        chunk = flat[start:start + token_chunk][None]
+        inds, scores = mlp.gate(chunk)                       # (1, n, k)
+        y = mlp.switch_mlp(chunk, inds)                      # (1, n, k, H)
+        contrib = scores.astype(mx.float32) * mx.sqrt((y.astype(mx.float32) ** 2).sum(-1))
+        flat_idx = inds.reshape(-1)
+        sal = sal.at[flat_idx].add(contrib.reshape(-1))
+        cnt = cnt.at[flat_idx].add(mx.ones((flat_idx.size,), dtype=mx.float32))
+        out = (y * scores[..., None]).sum(axis=-2).astype(y.dtype)
+        if getattr(mlp, "shared_experts", None) is not None:
+            out = out + mlp.shared_experts(chunk)
+        pieces.append(out.reshape(-1, H))
+        mx.eval(sal, cnt, pieces[-1])
+    return mx.concatenate(pieces, axis=0).reshape(B, L, H), sal, cnt
