@@ -103,6 +103,9 @@ Perplexity, wikitext-2 test, identical windows, builds that fit 512 GB:
 | [4bit](https://huggingface.co/pipenetwork/GLM-5.3-MLX-4bit) | 418.6 GB | 2.8636 [2.6681, 3.0714] |
 | [mixed-4_8bit](https://huggingface.co/pipenetwork/GLM-5.3-MLX-mixed-4_8bit) | 427.8 GB | 2.7420 [2.5533, 2.9477] |
 | [mixed-3_6bit](https://huggingface.co/pipenetwork/GLM-5.3-MLX-mixed-3_6bit) | 332.6 GB | 3.0338 [2.8366, 3.2386] |
+| [REAP25-4bit](https://huggingface.co/pipenetwork/GLM-5.3-REAP25-MLX-4bit) | 316.6 GB | 3.2872 [3.0703, 3.5184] |
+| [REAP37-4bit](https://huggingface.co/pipenetwork/GLM-5.3-REAP37-MLX-4bit) | 267.2 GB | 3.8517 [3.6212, 4.0937] |
+| [REAP50-4bit](https://huggingface.co/pipenetwork/GLM-5.3-REAP50-MLX-4bit) | 214.7 GB | 5.0295 [4.7571, 5.3137] |
 
 **Recommendation.** For a 512 GB Mac, **mixed 4/8-bit** (427.7 GB): perplexity 2.7420, a paired 4.3% better than uniform 4-bit (ratio 0.9575 [0.9537, 0.9612], better on 98.6% of windows) for 9 GB more — the 2.5% of non-expert weights are worth their 8 bits, as on every model we have measured. Uniform 4-bit (418.6 GB) is the fallback when those 9 GB matter. **Mixed 3/6-bit** (332.6 GB) is the 384 GB-class option, at a real cost: 3.0338, +5.9% over 4-bit and +10.6% over mixed 4/8 — it leads the ladder for the first ten layers and then 3-bit expert damage compounds. Among the builds that cannot be run here, the ladder puts 8-bit closest to bfloat16 (free-running error 0.131), then 6-bit (0.167); the **upstream FP8 release scores 0.173, between 6-bit and 5-bit**, which is why these are converted from the bf16 release. 5-bit (0.225) sits just above mixed 4/8 (0.250) at 100 GB more.
 <!-- /measurements -->
