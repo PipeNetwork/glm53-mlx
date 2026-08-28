@@ -19,9 +19,12 @@ ROOT = Path(__file__).resolve().parents[1]
 OUT_ROOT = Path("/Users/david/llm/glm53-out")
 UPSTREAM = "zai-org/GLM-5.3"
 CODE_REPO = "https://github.com/PipeNetwork/glm53-mlx"
-ORDER = ["GLM-5.3-MLX-8bit", "GLM-5.3-MLX-6bit", "GLM-5.3-MLX-5bit", "GLM-5.3-MLX-4bit", "GLM-5.3-MLX-mixed-4_8bit", "GLM-5.3-MLX-mixed-3_6bit"]
+ORDER = ["GLM-5.3-MLX-8bit", "GLM-5.3-MLX-6bit", "GLM-5.3-MLX-5bit", "GLM-5.3-MLX-4bit", "GLM-5.3-MLX-mixed-4_8bit", "GLM-5.3-MLX-mixed-3_6bit",
+         "GLM-5.3-REAP25-MLX-4bit", "GLM-5.3-REAP37-MLX-4bit", "GLM-5.3-REAP50-MLX-4bit", "GLM-5.3-REAP50-MLX-3bit"]
 RAM = {"GLM-5.3-MLX-8bit": "1 TB+ (two machines)", "GLM-5.3-MLX-6bit": "768 GB (two machines)", "GLM-5.3-MLX-5bit": "768 GB (two machines)",
-       "GLM-5.3-MLX-4bit": "512 GB, tight", "GLM-5.3-MLX-mixed-4_8bit": "512 GB, tight", "GLM-5.3-MLX-mixed-3_6bit": "512 GB"}
+       "GLM-5.3-MLX-4bit": "512 GB, tight", "GLM-5.3-MLX-mixed-4_8bit": "512 GB, tight", "GLM-5.3-MLX-mixed-3_6bit": "512 GB",
+       "GLM-5.3-REAP25-MLX-4bit": "384 GB-class", "GLM-5.3-REAP37-MLX-4bit": "384 GB-class", "GLM-5.3-REAP50-MLX-4bit": "256 GB Mac",
+       "GLM-5.3-REAP50-MLX-3bit": "192 GB Mac"}
 LADDER_NAME = {"GLM-5.3-MLX-8bit": "8bit", "GLM-5.3-MLX-6bit": "6bit", "GLM-5.3-MLX-5bit": "5bit", "GLM-5.3-MLX-4bit": "4bit",
                "GLM-5.3-MLX-mixed-4_8bit": "mixed-4_8bit", "GLM-5.3-MLX-mixed-3_6bit": "mixed-3_6bit"}
 
@@ -84,7 +87,7 @@ tests: [{code_repo}]({code_repo}).
 Source precision: the FP8 release is a lossy derivative of the bf16 one (dequantized FP8 weights
 differ from bf16 by up to 1.6e-2 on values of 0.46 — half an e4m3 step). {fp8_note}
 
-## Quality
+{reap_section}## Quality
 
 Two measurements, because at 744B most of the ladder cannot be loaded on a 512 GB machine:
 
@@ -126,7 +129,8 @@ def ppl_table(results: dict, sizes: dict):
     for n in ORDER:
         if n in results:
             r = results[n]
-            rows.append(f"| [{n.split('MLX-')[1]}](https://huggingface.co/pipenetwork/{n}) | {sizes.get(n, 0):.1f} GB | {r['perplexity']:.4f} [{r['ci95'][0]:.4f}, {r['ci95'][1]:.4f}] |")
+            label = n.replace("GLM-5.3-", "").replace("MLX-", "")
+            rows.append(f"| [{label}](https://huggingface.co/pipenetwork/{n}) | {sizes.get(n, 0):.1f} GB | {r['perplexity']:.4f} [{r['ci95'][0]:.4f}, {r['ci95'][1]:.4f}] |")
     return "\n".join(rows)
 
 
@@ -152,11 +156,26 @@ def main() -> int:
                 if os.path.exists(args.ladder) and "fp8" in [str(n) for n in np.load(args.ladder, allow_pickle=True)["names"]] else "")
     recommendation = json.load(open(ROOT / "recommendation.json"))["text"] if (ROOT / "recommendation.json").exists() else ""
     name = args.repo.split("/")[-1]
+    reap_section = ""
+    if "reap" in cfg:
+        r = cfg["reap"]
+        sal = np.load(OUT_ROOT / r["saliency"], allow_pickle=True)
+        halves = sal["saliency_halves"]; moe = [int(i) for i in sal["moe_layers"]]; keep_k = r["kept_experts"]
+        ov = np.mean([len(set(np.argsort(-halves[0, i])[:keep_k]) & set(np.argsort(-halves[1, i])[:keep_k])) / keep_k for i in moe])
+        reap_section = (f"## REAP pruning\n\nThis build keeps **{r['kept_experts']} of {r['original_experts']}** routed experts per MoE layer "
+                        f"({r['ratio_pct']}% pruned; the 3 dense layers, attention, shared experts and the router are untouched), chosen by "
+                        f"REAP saliency — mean `router_weight × ‖expert_output‖` over {r['calibration_tokens']:,} calibration tokens "
+                        f"(wikitext-2 *train*, ten languages of Wikipedia and code; checked for zero 32-gram overlap with the eval set). "
+                        f"Kept experts carry {100*r['saliency_retained_mean']:.1f}% of the layers' saliency mass on average. Ranking the "
+                        f"experts on two disjoint halves of the calibration set picks the same kept set {100*ov:.1f}% of the time. "
+                        f"The pruning was applied to the already-quantized {r.get('base', '4-bit')} build, which is exactly equivalent to "
+                        f"pruning bf16 and requantizing (expert subsetting and affine groups are on different axes). Saliency retention "
+                        f"is not a quality measure — the perplexity below is.\n\n")
     card = CARD.format(upstream=UPSTREAM, code_repo=CODE_REPO, repo_name=name, bits_tag=f"{expert_bits}-bit", recipe=recipe, gb=gb,
                        ram=RAM.get(name, "see table"), expert_bits=expert_bits, other_bits=other_bits, fp8_note=fp8_note,
                        ladder_tokens=ladder_tokens, ladder_table=lt, tokens=any_ppl["tokens"] if any_ppl else 0,
                        windows=any_ppl["windows"] if any_ppl else 0, seq=any_ppl["seq_len"] if any_ppl else 0, ppl_table=pt,
-                       recommendation=recommendation)
+                       recommendation=recommendation, reap_section=reap_section)
     (d / "README.md").write_text(card)
     print(f"repo   {args.repo}\ndir    {d}\nfiles  {sum(1 for p in d.iterdir() if p.is_file())}, {gb:.1f} GB\n"); print(lt); print(); print(pt)
     if not args.yes:
