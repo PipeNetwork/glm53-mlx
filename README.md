@@ -83,7 +83,21 @@ machine — not by us, not by anyone downloading them onto one Mac. So there are
 * `scripts/ppl_large.py` + `ppl_compare.py` — wikitext-2 perplexity on identical windows for the
   builds that fit (4-bit, mixed).
 
-MEASUREMENTS_TABLE
+<!-- measurements -->
+Per-layer divergence vs bf16, 16,384 tokens, 78 layers (relative L2 of the layer output; `fp8` = the FP8 release itself):
+
+| recipe | teacher-forced (mean over layers) | free-running (final layer) | cosine (final) |
+|---|---:|---:|---:|
+| 8bit | 0.00685 | 0.13119 | 0.98945 |
+| 6bit | 0.01465 | 0.16736 | 0.98389 |
+| 5bit | 0.02651 | 0.22521 | 0.97272 |
+| 4bit | 0.05161 | 0.35740 | 0.93390 |
+| mixed-4_8bit | 0.02524 | 0.24951 | 0.96710 |
+| mixed-3_6bit | 0.05242 | 0.42380 | 0.90624 |
+| fp8 | 0.01741 | 0.17321 | 0.98320 |
+
+**How to read this.** The ladder is the only measurement that covers the whole set: 8-bit is closest to bfloat16 (free-running error 0.131, cosine 0.989 after 78 layers), 6-bit next (0.167). The upstream **FP8 release scores 0.173 — between 6-bit and 5-bit** — so any build converted from FP8 starts below our 6-bit, which is why these are converted from bf16. 5-bit (0.225) and mixed 4/8-bit (0.250) are close, and only the mixed build fits a 512 GB Mac; uniform 4-bit (0.357) is the tight 512 GB option; **mixed 3/6-bit (0.424) loses to uniform 4-bit** — it leads for the first ten layers, then 3-bit expert damage compounds — and is published for the 384 GB fit, not for quality. Perplexity on the builds that fit this machine is below.
+<!-- /measurements -->
 
 ## Layout
 
