@@ -695,4 +695,9 @@ class Model(nn.Module):
         return predicate
 
     def make_cache(self):
-        return [CacheList(KVCache(), KVCache()) for _ in self.layers]
+        # Shared layers have no indexer, so no indexer key cache: an empty second KVCache would
+        # trip mlx-lm's `cache.state` evaluation (keys is None) during generation.
+        return [
+            CacheList(KVCache(), KVCache()) if layer.self_attn.indexer is not None else CacheList(KVCache())
+            for layer in self.layers
+        ]

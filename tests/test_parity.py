@@ -124,6 +124,7 @@ def main():
     cache = model.make_cache()
     a = logits_mlx(model, ids[:, :6], cache=cache); b_ = logits_mlx(model, ids[:, 6:], cache=cache)
     all_ok &= report("chunked prefill 6+8 vs single-shot", np.concatenate([a, b_], 1), logits_mlx(model, ids))
+    mx.eval([c.state for c in cache]); print(f"  {'cache.state evaluable after prefill (mlx-lm generate_step path)':58s} OK")
     print("[4] control: the shared-layer fix is load-bearing (stock behaviour = every layer runs its own indexer,")
     print("    shared layers' weights missing from the checkpoint and left at random init by a lenient load)")
     stock = R.Model(R.ModelArgs.from_dict({**TINY, "indexer_types": ["full"] * TINY["num_hidden_layers"]}))
