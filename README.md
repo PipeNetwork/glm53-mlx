@@ -5,7 +5,7 @@ MLX (Apple Silicon) runtime and quantization tooling for
 MoE (256 experts, top-8; MLA with DeepSeek-V3.2-style sparse attention), the same architecture and
 config as GLM-5.2.
 
-Published builds: **[pipenetwork/GLM-5.3 MLX](https://huggingface.co/collections/pipenetwork)**
+Published builds: **[pipenetwork/GLM-5.3 MLX](https://huggingface.co/collections/pipenetwork/glm-53-mlx-6a91e67071233946179533d5)**
 (see [Measurements](#measurements)).
 
 ## Why this exists

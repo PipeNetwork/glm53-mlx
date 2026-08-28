@@ -1,0 +1,6 @@
+[["pipenetwork/GLM-5.3-MLX-8bit", "~800 GB, two machines. Closest to bf16 on the per-layer ladder (free-running error 0.131, cos 0.989)."],
+ ["pipenetwork/GLM-5.3-MLX-6bit", "~625 GB, two machines. Ladder 0.167 — better than the upstream FP8 release (0.173)."],
+ ["pipenetwork/GLM-5.3-MLX-5bit", "~530 GB. Ladder 0.225."],
+ ["pipenetwork/GLM-5.3-MLX-mixed-4_8bit", "427.7 GB, 512 GB Mac. ppl 2.7420 — the build to use: 4.3% better than uniform 4-bit for 9 GB more."],
+ ["pipenetwork/GLM-5.3-MLX-4bit", "418.6 GB, 512 GB Mac (tight). ppl 2.8636."],
+ ["pipenetwork/GLM-5.3-MLX-mixed-3_6bit", "332.6 GB, 384 GB-class. ppl 3.0338 (+5.9% vs 4-bit): 3-bit experts compound over 78 layers."]]
