@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import upload as U
 from pathlib import Path
 root = Path(__file__).resolve().parents[1]
-sizes = {n: sum(f.stat().st_size for f in (U.OUT_ROOT / n).iterdir() if f.is_file()) / 1e9 for n in U.ORDER if (U.OUT_ROOT / n).exists()}
+sizes = U.hub_sizes()
 parts = []
 lad = U.OUT_ROOT / "ladder.npz"
 if lad.exists():

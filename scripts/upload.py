@@ -113,6 +113,23 @@ Greedy generation (a collapse detector, not a ranking) is coherent on every publ
 """
 
 
+def hub_sizes():
+    """Sizes from the local build dirs where present, else from the Hub (local copies of the big builds are deleted after upload)."""
+    out = {}
+    from huggingface_hub import HfApi
+    api = HfApi()
+    for n in ORDER:
+        d = OUT_ROOT / n
+        if d.exists():
+            out[n] = sum(f.stat().st_size for f in d.iterdir() if f.is_file()) / 1e9
+        else:
+            try:
+                out[n] = sum((x.size or 0) for x in api.model_info(f"pipenetwork/{n}", files_metadata=True).siblings) / 1e9
+            except Exception:
+                pass
+    return out
+
+
 def ladder_table(npz_path: Path):
     z = np.load(npz_path, allow_pickle=True)
     names = [str(n) for n in z["names"]]; L = int(z["layers"])
@@ -147,7 +164,7 @@ def main() -> int:
     other_bits = next((v["bits"] for k, v in overrides.items() if ".switch_mlp." not in k), q["bits"])
     recipe = f"{expert_bits}-bit" if expert_bits == other_bits else f"{expert_bits}-bit experts / {other_bits}-bit everything else"
     gb = sum(p.stat().st_size for p in d.iterdir() if p.is_file()) / 1e9
-    sizes = {n: sum(f.stat().st_size for f in (OUT_ROOT / n).iterdir() if f.is_file()) / 1e9 for n in ORDER if (OUT_ROOT / n).exists()}
+    sizes = hub_sizes()
     results = json.load(open(args.results)) if os.path.exists(args.results) else {}
     lt, ladder_tokens, L = ladder_table(Path(args.ladder)) if os.path.exists(args.ladder) else ("(ladder pending)", 0, 0)
     pt = ppl_table(results, sizes) if results else "(pending)"
