@@ -9,10 +9,10 @@ from pathlib import Path
 
 def load_model(path, lazy: bool = False):
     from mlx_lm.utils import load_model as _load
-    model, config = _load(Path(path), lazy=lazy)
+    model, config = _load(Path(path), lazy=lazy, strict=True, trust_remote_code=True)
     return model, config
 
 
 def load(path, lazy: bool = False):
     from mlx_lm import load as _load
-    return _load(str(path), lazy=lazy)
+    return _load(str(path), lazy=lazy, trust_remote_code=True)
