@@ -2,5 +2,6 @@
 __pycache__/
 *.log
 *.npy
+!artifacts/*.npz
 *.safetensors
 ppl_results.json

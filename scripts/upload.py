@@ -155,7 +155,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", required=True); ap.add_argument("--repo", required=True)
     ap.add_argument("--results", default=str(ROOT / "ppl_results.json"))
-    ap.add_argument("--ladder", default=str(OUT_ROOT / "ladder.npz"))
+    ap.add_argument("--ladder", default=str(ROOT / "artifacts" / "ladder.npz"))
     ap.add_argument("--yes", action="store_true"); ap.add_argument("--card-only", action="store_true")
     args = ap.parse_args()
     d = Path(args.dir); cfg = json.load(open(d / "config.json")); q = cfg["quantization"]
@@ -176,7 +176,7 @@ def main() -> int:
     reap_section = ""
     if "reap" in cfg:
         r = cfg["reap"]
-        sal = np.load(OUT_ROOT / r["saliency"], allow_pickle=True)
+        sal = np.load(ROOT / "artifacts" / r["saliency"], allow_pickle=True)
         halves = sal["saliency_halves"]; moe = [int(i) for i in sal["moe_layers"]]; keep_k = r["kept_experts"]
         ov = np.mean([len(set(np.argsort(-halves[0, i])[:keep_k]) & set(np.argsort(-halves[1, i])[:keep_k])) / keep_k for i in moe])
         reap_section = (f"## REAP pruning\n\nThis build keeps **{r['kept_experts']} of {r['original_experts']}** routed experts per MoE layer "

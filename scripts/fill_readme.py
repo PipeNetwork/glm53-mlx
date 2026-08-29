@@ -6,7 +6,7 @@ from pathlib import Path
 root = Path(__file__).resolve().parents[1]
 sizes = U.hub_sizes()
 parts = []
-lad = U.OUT_ROOT / "ladder.npz"
+lad = root / "artifacts" / "ladder.npz"
 if lad.exists():
     lt, toks, L = U.ladder_table(lad); parts.append(f"Per-layer divergence vs bf16, {toks:,} tokens, {L} layers (relative L2 of the layer output; `fp8` = the FP8 release itself):\n\n{lt}")
 res = root / "ppl_results.json"
